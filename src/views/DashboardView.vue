@@ -71,6 +71,9 @@
 <script setup>
 import { ref, computed, nextTick, onUpdated } from 'vue'
 import { useRouter } from 'vue-router'
+import MesRendezVous from '../components/MesRendezVous.vue'
+import MesVehicules from '../components/MesVehicules.vue'
+import HistoriqueRdv from '../components/HistoriqueRdv.vue'
 // Icônes SVG en composants Vue
 const IconRdv = { template: `<svg ...></svg>` }
 const IconVehicule = { template: `<svg ...></svg>` }
@@ -85,14 +88,14 @@ const menu = [
 ]
 
 // Composants de contenu (exemples)
-const RdvSection = { template: `<div class='text-2xl font-bold text-blue-700'>Mes rendez-vous (exemple)</div>` }
-const VehiculesSection = { template: `<div class='text-2xl font-bold text-green-700'>Mes véhicules (exemple)</div>` }
-const HistoriqueSection = { template: `<div class='text-2xl font-bold text-gray-700'>Historique des RDV (exemple)</div>` }
+// const RdvSection = { template: `<div class='text-2xl font-bold text-blue-700'>Mes rendez-vous (exemple)</div>` }
+// const VehiculesSection = { template: `<div class='text-2xl font-bold text-green-700'>Mes véhicules (exemple)</div>` }
+// const HistoriqueSection = { template: `<div class='text-2xl font-bold text-gray-700'>Historique des RDV (exemple)</div>` }
 
 const currentComponent = computed(() => {
-  if (section.value === 'rdv') return RdvSection
-  if (section.value === 'vehicules') return VehiculesSection
-  return HistoriqueSection
+  if (section.value === 'rdv') return MesRendezVous
+  if (section.value === 'vehicules') return MesVehicules
+  return HistoriqueRdv
 })
 
 // Chatbot (exemple statique)
