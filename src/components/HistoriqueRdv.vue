@@ -48,18 +48,30 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+
 const search = ref('')
-const historique = [
-  { id: 1, date: '10/05/2024', garage: 'Garage Peugeot', type: 'Révision', status: 'Annulé' },
-  { id: 2, date: '12/04/2024', garage: 'Garage Renault', type: 'Contrôle technique', status: 'Confirmé' },
-  { id: 3, date: '20/03/2024', garage: 'Garage Citroën', type: 'Pneus', status: 'En attente' }
-]
+const historique = ref([])
+const loading = ref(true)
+const error = ref(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('http://localhost:8000/api/historique-rdv')
+    if (!res.ok) throw new Error('Erreur lors du chargement')
+    historique.value = await res.json()
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
+})
+
 const filteredHistorique = computed(() =>
-  historique.filter(h =>
-    h.garage.toLowerCase().includes(search.value.toLowerCase()) ||
-    h.type.toLowerCase().includes(search.value.toLowerCase()) ||
-    h.status.toLowerCase().includes(search.value.toLowerCase())
+  historique.value.filter(h =>
+    h.garage?.toLowerCase().includes(search.value.toLowerCase()) ||
+    h.type?.toLowerCase().includes(search.value.toLowerCase()) ||
+    h.status?.toLowerCase().includes(search.value.toLowerCase())
   )
 )
-</script> 
+</script>

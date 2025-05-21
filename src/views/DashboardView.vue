@@ -69,15 +69,11 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onUpdated } from 'vue'
+import { ref, computed, nextTick, onUpdated, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MesRendezVous from '../components/MesRendezVous.vue'
 import MesVehicules from '../components/MesVehicules.vue'
 import HistoriqueRdv from '../components/HistoriqueRdv.vue'
-// Icônes SVG en composants Vue
-const IconRdv = { template: `<svg ...></svg>` }
-const IconVehicule = { template: `<svg ...></svg>` }
-const IconHistory = { template: `<svg ...></svg>` }
 
 const section = ref('rdv')
 const showChat = ref(false)
@@ -87,18 +83,14 @@ const menu = [
   { key: 'historique', label: 'Historique des RDV', emoji: '📜', activeClass: 'bg-gray-200 text-gray-700 shadow', baseClass: 'text-gray-700 hover:bg-gray-100' }
 ]
 
-// Composants de contenu (exemples)
-// const RdvSection = { template: `<div class='text-2xl font-bold text-blue-700'>Mes rendez-vous (exemple)</div>` }
-// const VehiculesSection = { template: `<div class='text-2xl font-bold text-green-700'>Mes véhicules (exemple)</div>` }
-// const HistoriqueSection = { template: `<div class='text-2xl font-bold text-gray-700'>Historique des RDV (exemple)</div>` }
-
+// On ne garde que la logique de sélection de composant
 const currentComponent = computed(() => {
   if (section.value === 'rdv') return MesRendezVous
   if (section.value === 'vehicules') return MesVehicules
   return HistoriqueRdv
 })
 
-// Chatbot (exemple statique)
+// Chatbot (optionnel, peut rester en maquette pour l’instant)
 const messages = ref([{ text: 'Bonjour, comment puis-je vous aider ?', sender: 'bot' }])
 const userInput = ref('')
 const typing = ref(false)
@@ -124,7 +116,6 @@ onUpdated(() => {
 
 const router = useRouter()
 const logout = () => {
-  // Ici tu peux aussi faire un emit ou clear le store utilisateur
   router.push('/login')
 }
 </script>

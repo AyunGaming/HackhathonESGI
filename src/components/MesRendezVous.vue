@@ -1,6 +1,7 @@
 <template>
   <div>
     <h1 class="text-2xl font-bold text-blue-700 mb-6">Mes rendez-vous</h1>
+    <div v-if="error" class="text-red-600 font-semibold mb-4">{{ error }}</div>
     <button
       @click="showModal = true"
       class="mb-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition"
@@ -23,22 +24,17 @@
             <span v-if="rdv.status === 'Confirmé'">✅</span>
             <span v-else-if="rdv.status === 'En attente'">⏳</span>
             <span v-else>❌</span>
-            {{ rdv.garage }}
+            {{ rdv.dealership }}
           </span>
           <span
             :class="[
               'px-2 py-1 rounded text-xs font-bold',
-              rdv.status === 'Confirmé' ? 'bg-green-100 text-green-700' :
-              rdv.status === 'Annulé' ? 'bg-red-100 text-red-700' :
               'bg-yellow-100 text-yellow-700'
             ]"
-          >{{ rdv.status }}</span>
+          >{{ rdv.vehicule }}</span>
         </div>
         <div class="text-gray-500 flex items-center gap-2">
-          <span>📅</span> {{ rdv.date }} à {{ rdv.heure }}
-        </div>
-        <div class="text-sm text-gray-400 flex items-center gap-2">
-          <span>🔧</span> {{ rdv.type }}
+          <span>📅</span> {{ rdv.date }}
         </div>
         <button
           class="mt-2 text-blue-600 hover:underline text-sm self-end"
@@ -178,34 +174,45 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-const rdvs = [
-  {
-    id: 1,
-    garage: 'Garage Renault',
-    date: '12 juin 2024',
-    heure: '14:00',
-    type: 'Contrôle technique',
-    status: 'Confirmé'
-  },
-  {
-    id: 2,
-    garage: 'Garage Peugeot',
-    date: '15 juin 2024',
-    heure: '10:30',
-    type: 'Révision',
-    status: 'En attente'
-  },
-  {
-    id: 3,
-    garage: 'Garage Citroën',
-    date: '20 juin 2024',
-    heure: '09:00',
-    type: 'Pneus',
-    status: 'Annulé'
+const rdvs = ref([])
+const loading = ref(true)
+const error = ref(null)
+const user_id = ref(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('http://localhost:8000/api/session/user', { credentials: 'include' });
+    const data = await res.json();
+    user_id.value = data.id;
+
+    const rdvsRes = await fetch('http://localhost:8000/api/appointements/user/' + user_id.value, { credentials: 'include' })
+    const rdvsData = await rdvsRes.json()
+    console.log('Réponse API rdvsData:', rdvsData);
+    if (!rdvsRes.ok) {
+      // Affiche le message d'erreur retourné par l'API et l'ID utilisé
+      error.value = `Erreur API: ${rdvsData.error} (ID envoyé: ${client_id.value})`
+      return
+    }
+    rdvs.value = rdvsData
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    loading.value = false
   }
-]
+})
+
+onMounted(async () => {
+  try {
+    loading.value = true
+    
+    }catch (e) {
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
+})
 
 const showModal = ref(false)
 const currentStep = ref(1)
@@ -304,4 +311,4 @@ const completeBooking = () => {
     alert('Veuillez sélectionner une date et un créneau.');
   }
 }
-</script> 
+</script>

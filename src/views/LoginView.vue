@@ -19,6 +19,7 @@
           Pas de compte ?
           <router-link to="/register" class="text-blue-600 hover:underline">Inscription</router-link>
         </p>
+        <p v-if="error" class="text-red-500 text-sm text-center mt-2">{{ error }}</p>
       </form>
     </div>
   </div>
@@ -30,9 +31,29 @@ import { useRouter } from 'vue-router'
 const email = ref('')
 const password = ref('')
 const router = useRouter()
-const login = () => {
-  if (email.value && password.value) {
-    router.push('/dashboard')
+const error = ref('')
+
+const login = async () => {
+  error.value = ''
+  try {
+    const response = await fetch('http://localhost:8000/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // important pour la session
+      body: JSON.stringify({
+        email: email.value,
+        password: password.value
+      })
+    })
+    const data = await response.json()
+    if (response.ok && data.success) {
+      // Tu peux stocker les infos user ici si besoin
+      router.push('/dashboard')
+    } else {
+      error.value = data.error || 'Erreur de connexion'
+    }
+  } catch (e) {
+    error.value = 'Erreur réseau'
   }
 }
 </script>
