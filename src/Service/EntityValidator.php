@@ -2,25 +2,32 @@
 
 namespace App\Service;
 
+use App\Entity\Client;
+use App\Entity\User;
+use App\Entity\Vehicule;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class EntityValidator
 {
-    private const IGNORED_FIELDS = ['full_name', 'address', 'phone'];
-
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        #[Autowire('@monolog.logger.entity')]
         private readonly LoggerInterface $logger
     ) {}
 
     public function isValidEntityData(array $item): bool
     {
+        // Liste des champs à ignorer car ils viennent de l'utilisateur connecté
+        $ignoredFields = ['full_name', 'address', 'phone'];
+
+        // Ignorer les données qui ne contiennent que des champs à ignorer
         $hasValidFields = false;
         foreach ($item as $key => $value) {
-            if (!in_array($key, self::IGNORED_FIELDS)) {
+            if (!in_array($key, $ignoredFields)) {
                 $hasValidFields = true;
                 break;
             }
@@ -34,27 +41,25 @@ class EntityValidator
         return true;
     }
 
-    public function validateUser(int $userId): object
+    public function validateUser(int $userId): Client
     {
-        $user = $this->entityManager->getRepository('App\\Entity\\User')->find($userId);
+        $user = $this->entityManager->getRepository(User::class)->find($userId);
         if (!$user) {
-            $this->logger->error('Utilisateur non trouvé: {user_id}', ['user_id' => $userId]);
             throw new HttpException(Response::HTTP_NOT_FOUND, 'Utilisateur non trouvé');
         }
 
         $client = $user->getClient();
         if (!$client) {
-            $this->logger->error('Aucun Client trouvé pour l\'utilisateur {user_id}', ['user_id' => $userId]);
-            throw new HttpException(Response::HTTP_NOT_FOUND, 'Aucun Client trouvé pour cet utilisateur');
+            throw new HttpException(Response::HTTP_NOT_FOUND, 'Client non trouvé pour cet utilisateur');
         }
 
         return $client;
     }
 
-    public function validateVehicle(object $client, string $immatriculation): object
+    public function validateVehicle(Client $client, string $immatriculation): Vehicule
     {
-        $clientVehicles = $client->getVehicules();
-        foreach ($clientVehicles as $vehicle) {
+        $vehicles = $client->getVehicules();
+        foreach ($vehicles as $vehicle) {
             if ($vehicle->getRegistration() === $immatriculation) {
                 return $vehicle;
             }
@@ -62,7 +67,7 @@ class EntityValidator
 
         throw new HttpException(
             Response::HTTP_NOT_FOUND,
-            sprintf('Aucun véhicule trouvé avec l\'immatriculation %s pour ce client', $immatriculation)
+            sprintf('Véhicule avec immatriculation %s non trouvé pour ce client', $immatriculation)
         );
     }
 
@@ -78,7 +83,7 @@ class EntityValidator
         if (!$entity) {
             throw new HttpException(
                 Response::HTTP_NOT_FOUND,
-                sprintf('L\'entité %s n\'existe pas dans la base de données', $entityType)
+                sprintf('Entité %s non trouvée avec les critères: %s', $entityType, json_encode($criteria))
             );
         }
 

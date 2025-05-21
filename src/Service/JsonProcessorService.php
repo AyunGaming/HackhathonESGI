@@ -6,12 +6,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\PropertyAccess\PropertyAccess;
-use Doctrine\ORM\Mapping\ClassMetadata;
-use Symfony\Contracts\Cache\CacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use App\Entity\Appointement;
 
 class JsonProcessorService
 {
@@ -26,9 +23,6 @@ class JsonProcessorService
         private readonly LoggerInterface $logger
     ) {}
 
-    /**
-     * Récupère et traite un fichier JSON depuis une URL
-     */
     public function processJsonFromUrl(string $url): array
     {
         try {
@@ -62,71 +56,6 @@ class JsonProcessorService
         }
     }
 
-    /**
-     * Vérifie si les données sont une entité valide à traiter
-     */
-    private function isValidEntityData(array $item): bool
-    {
-        // Liste des champs à ignorer car ils viennent de l'utilisateur connecté
-        $ignoredFields = ['full_name', 'address', 'phone'];
-
-        // Ignorer les données qui ne contiennent que des champs à ignorer
-        $hasValidFields = false;
-        foreach ($item as $key => $value) {
-            if (!in_array($key, $ignoredFields)) {
-                $hasValidFields = true;
-                break;
-            }
-        }
-
-        if (!$hasValidFields) {
-            $this->logger->debug('Données ignorées car ne contiennent que des champs utilisateur: {data}', ['data' => $item]);
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Récupère le mapping des champs pour un type d'entité spécifique
-     */
-    private function getFieldMappingForType(string $entityType): array
-    {
-        return match($entityType) {
-            'dealership' => [
-                'dealership_name' => 'name',
-                'city' => 'city',
-                'address' => 'address',
-                'zipcode' => 'zipcode',
-                'latitude' => 'latitude',
-                'longitude' => 'longitude'
-            ],
-            'vehicle' => [
-                'brand' => 'brand',
-                'model' => 'model',
-                'year' => 'year',
-                'price' => 'price'
-            ],
-            'service' => [
-                'operation_name' => 'name',
-                'category' => 'category',
-                'additionnal_help' => 'help',
-                'additionnal_comment' => 'comment',
-                'time_unit' => 'time',
-                'price' => 'price'
-            ],
-            'client' => [
-                'full_name' => 'name',
-                'address' => 'address',
-                'phone' => 'phone'
-            ],
-            default => []
-        };
-    }
-
-    /**
-     * Traite et sauvegarde les données JSON en base de données
-     */
     public function processAndSaveData(array $data, string $entityClass, array $fieldMapping, array $options = []): array
     {
         $this->logger->info('Début du traitement des données JSON', ['data' => $data]);
@@ -171,8 +100,24 @@ class JsonProcessorService
                 $relatedEntities[$entityType] = $this->validator->validateExistingEntity($entityType, $criteria);
             }
 
-            // Créer le rendez-vous avec les données du rendez-vous
-            $appointment = $this->appointmentCreator->create($relatedEntities, $data);
+            // Vérifier si un rendez-vous en attente existe déjà
+            $existingAppointment = $this->entityManager->getRepository(Appointement::class)->findOneBy([
+                'client' => $client,
+                'vehicule' => $relatedEntities['vehicle'],
+                'status' => Appointement::STATUS_PENDING
+            ]);
+
+            if ($existingAppointment) {
+                $this->logger->info('Rendez-vous en attente trouvé, ajout du service', [
+                    'appointment_id' => $existingAppointment->getId()
+                ]);
+                $existingAppointment->addService($relatedEntities['service']);
+                $this->entityManager->persist($existingAppointment);
+                $appointment = $existingAppointment;
+            } else {
+                $this->logger->info('Création d\'un nouveau rendez-vous');
+                $appointment = $this->appointmentCreator->create($relatedEntities, $data);
+            }
             
             $this->entityManager->flush();
             $this->entityManager->commit();
@@ -205,66 +150,4 @@ class JsonProcessorService
             $this->entityManager->rollback();
         }
     }
-
-    /**
-     * Détermine le type d'entité basé sur les clés présentes dans l'élément
-     */
-    private function determineEntityType(array $item, array $fieldMapping): ?string
-    {
-        // Ignorer la clé car_immatriculation car elle est traitée séparément
-        if (isset($item['car_immatriculation'])) {
-            unset($item['car_immatriculation']);
-        }
-
-        // Définition des champs caractéristiques pour chaque type d'entité
-        $entitySignatures = [
-            'dealership' => ['dealership_name', 'city', 'address', 'zipcode', 'latitude', 'longitude'],
-            'vehicle' => ['brand', 'model', 'year', 'price'],
-            'service' => ['operation_name', 'category', 'time_unit', 'price'],
-            'appointment' => ['preferred_datetime']
-        ];
-
-        // Vérifier chaque type d'entité
-        foreach ($entitySignatures as $type => $signatureFields) {
-            $matchCount = 0;
-            foreach ($signatureFields as $field) {
-                if (isset($item[$field])) {
-                    $matchCount++;
-                }
-            }
-            
-            // Si plus de 50% des champs caractéristiques sont présents, on considère que c'est ce type d'entité
-            if ($matchCount >= count($signatureFields) * 0.7) {
-                $this->logger->debug('Type d\'entité déterminé: {type} avec {count} champs correspondants', [
-                    'type' => $type,
-                    'count' => $matchCount,
-                    'fields' => array_keys($item)
-                ]);
-                return $type;
-            }
-        }
-
-        $this->logger->warning('Type d\'entité non déterminé pour: {data}', [
-            'data' => $item,
-            'available_fields' => array_keys($item)
-        ]);
-        return null;
-    }
-
-    /**
-     * Flush et clear l'EntityManager avec gestion des erreurs
-     */
-    private function flushAndClear(int $count): void
-    {
-        try {
-            $this->entityManager->flush();
-            $this->entityManager->clear();
-        } catch (\Exception $e) {
-            $this->logger->error('Erreur lors du flush: {error}', [
-                'error' => $e->getMessage(),
-                'count' => $count
-            ]);
-            throw $e;
-        }
-    }
-} 
+}

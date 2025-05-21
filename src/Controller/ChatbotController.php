@@ -2,17 +2,22 @@
 
 namespace App\Controller;
 
+use App\Entity\Appointement;
 use App\Service\ChatbotService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Psr\Log\LoggerInterface;
 
 #[Route('/api/chatbot')]
 class ChatbotController extends AbstractController
 {
     public function __construct(
-        private readonly ChatbotService $chatbotService
+        private readonly ChatbotService $chatbotService,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly LoggerInterface $logger
     ) {
     }
 
@@ -56,10 +61,41 @@ class ChatbotController extends AbstractController
     public function reset(): JsonResponse
     {
         try {
+            // Récupérer le dernier rendez-vous en attente pour l'utilisateur connecté
+            $lastAppointment = $this->entityManager->getRepository(Appointement::class)
+                ->findOneBy(
+                    ['client' => $this->getUser()->getClient(), 'status' => Appointement::STATUS_PENDING],
+                    ['id' => 'DESC']
+                );
+
+            if (!$lastAppointment) {
+                return $this->json([
+                    'error' => 'Aucun rendez-vous en attente trouvé pour cet utilisateur'
+                ], 404);
+            }
+
+            // Valider le rendez-vous
+            $lastAppointment->setStatus(Appointement::STATUS_VALIDATED);
+            $this->entityManager->persist($lastAppointment);
+            $this->entityManager->flush();
+
+            $this->logger->info('Rendez-vous validé', [
+                'appointment_id' => $lastAppointment->getId(),
+                'user_id' => $this->getUser()->getId()
+            ]);
+
+            // Réinitialiser le chat
             $this->chatbotService->resetChat();
-            return $this->json(['message' => 'Chat reset successfully']);
+
+            return $this->json([
+                'message' => 'Rendez-vous validé avec succès',
+                'appointment_id' => $lastAppointment->getId()
+            ]);
         } catch (\Exception $e) {
+            $this->logger->error('Erreur lors de la validation du rendez-vous: {error}', [
+                'error' => $e->getMessage()
+            ]);
             return $this->json(['error' => $e->getMessage()], 500);
         }
     }
-} 
+}
