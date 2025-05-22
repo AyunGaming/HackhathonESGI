@@ -29,12 +29,6 @@
         :is="currentComponent"
         v-bind="section === 'rdv' ? { rdvs, rdvsLoading, rdvsError } : section === 'vehicules' ? { vehicules, vehiculesLoading, vehiculesError } : {}"
       />
-      <!-- Bouton Chatbot flottant -->
-      <button
-        @click="showChat = !showChat"
-        class="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg p-4 flex items-center justify-center transition text-3xl"
-        title="Ouvrir le chatbot"
-      >💬</button>
       <!-- Fenêtre de chat -->
       <transition name="fade">
         <div
@@ -77,13 +71,15 @@ import { useRouter } from 'vue-router'
 import MesRendezVous from '../components/MesRendezVous.vue'
 import MesVehicules from '../components/MesVehicules.vue'
 import HistoriqueRdv from '../components/HistoriqueRdv.vue'
+import ChatbotFull from '../components/ChatbotFull.vue'
 
 const section = ref('rdv')
 const showChat = ref(false)
 const menu = [
   { key: 'rdv', label: 'Mes rendez-vous', emoji: '📅', activeClass: 'bg-blue-100 text-blue-700 shadow', baseClass: 'text-gray-700 hover:bg-blue-50' },
   { key: 'vehicules', label: 'Mes véhicules', emoji: '🚗', activeClass: 'bg-green-100 text-green-700 shadow', baseClass: 'text-gray-700 hover:bg-green-50' },
-  { key: 'historique', label: 'Historique des RDV', emoji: '📜', activeClass: 'bg-gray-200 text-gray-700 shadow', baseClass: 'text-gray-700 hover:bg-gray-100' }
+  { key: 'historique', label: 'Historique des RDV', emoji: '📜', activeClass: 'bg-gray-200 text-gray-700 shadow', baseClass: 'text-gray-700 hover:bg-gray-100' },
+  { key: 'ChatBot', label: 'ChatBot', emoji: '🤖', activeClass: 'bg-gray-200 text-gray-700 shadow', baseClass: 'text-gray-700 hover:bg-gray-100' }
 ]
 
 // --- Ajout des données centralisées ---
@@ -138,6 +134,7 @@ onMounted(async () => {
 const currentComponent = computed(() => {
   if (section.value === 'rdv') return MesRendezVous
   if (section.value === 'vehicules') return MesVehicules
+  if (section.value === 'ChatBot') return ChatbotFull
   return HistoriqueRdv
 })
 
