@@ -12,11 +12,19 @@
       <div
         v-for="rdv in rdvs"
         :key="rdv.id"
-        class="w-full max-w-full bg-white rounded-xl shadow p-4 flex flex-col gap-4 border-l-4 border-blue-500 box-border"
+        class="bg-white rounded-xl shadow p-6 flex flex-col gap-2 border-l-4"
+        :class="{
+          'border-blue-500': rdv.status === 'Confirmé',
+          'border-yellow-500': rdv.status === 'En attente',
+          'border-red-500': rdv.status === 'Annulé'
+        }"
       >
         <div class="flex justify-between items-center">
           <span class="font-semibold text-lg flex items-center gap-2">
-        <span>🚗⏳</span>
+            <span v-if="rdv.status === 'confirmé'">✅</span>
+            <span v-else-if="rdv.status === 'en attente'">⏳</span>
+            <span v-else-if="rdv.status === 'annulé'">❌</span>
+            <span>🚗</span>
         {{ rdv.dealership }}
           </span>
           <span

@@ -34,17 +34,68 @@ const messages = ref([
 const userInput = ref('')
 const typing = ref(false)
 const chatMessages = ref(null)
+const userInitialized = ref(false)
 
-function sendMessage() {
+
+initializeUser({
+  full_name: 'Jean Dupont',
+  phone_number: '0601020304',
+  address: '12 rue de la Paix, 75002 Paris'
+})
+// Appelle l’API Symfony qui relaie vers FastAPI
+async function initializeUser(userInfo) {
+  // userInfo = { full_name, phone_number, address }
+  try {
+    const params = new URLSearchParams(userInfo).toString()
+    const res = await fetch(`http://localhost:8001/initialize_chat?${params}`, {
+      method: 'GET',
+      credentials: 'include'
+    })
+    const data = await res.json()
+    if (res.ok) {
+      userInitialized.value = true
+      // Optionnel: afficher un message de bienvenue du bot
+      if (data.response) messages.value.push({ text: data.response, sender: 'bot' })
+    } else {
+      messages.value.push({ text: data.error || "Erreur d'initialisation", sender: 'bot' })
+    }
+  } catch (e) {
+    messages.value.push({ text: "Erreur de connexion à l'API.", sender: 'bot' })
+  }
+}
+
+async function sendMessage() {
+  if (!userInitialized.value) {
+    // Appelle initializeUser ici AVANT d'envoyer le message
+    await initializeUser({
+      full_name: 'Jean Dupont',
+      phone_number: '0601020304',
+      address: '12 rue de la Paix, 75002 Paris'
+    })
+    // Tu peux demander ces infos à l'utilisateur via un formulaire si besoin
+  }
   if (!userInput.value.trim()) return
   const input = userInput.value
   messages.value.push({ text: input, sender: 'user' })
   userInput.value = ''
   typing.value = true
-  setTimeout(() => {
-    messages.value.push({ text: `Vous avez dit : "${input}"`, sender: 'bot' })
-    typing.value = false
-  }, 800)
+  try {
+    const res = await fetch('http://localhost:8001/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ message: input })
+    })
+    const data = await res.json()
+    if (res.ok && data.response) {
+      messages.value.push({ text: data.response, sender: 'bot' })
+    } else {
+      messages.value.push({ text: data.error || "Erreur du bot", sender: 'bot' })
+    }
+  } catch (e) {
+    messages.value.push({ text: "Erreur de connexion au serveur.", sender: 'bot' })
+  }
+  typing.value = false
 }
 
 // Auto-scroll to bottom
