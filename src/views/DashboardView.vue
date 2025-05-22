@@ -25,7 +25,10 @@
     </aside>
     <!-- Contenu principal -->
     <main class="flex-1 p-8">
-      <component :is="currentComponent" />
+      <component
+        :is="currentComponent"
+        v-bind="section === 'rdv' ? { rdvs, rdvsLoading, rdvsError } : section === 'vehicules' ? { vehicules, vehiculesLoading, vehiculesError } : {}"
+      />
       <!-- Bouton Chatbot flottant -->
       <button
         @click="showChat = !showChat"
@@ -83,7 +86,55 @@ const menu = [
   { key: 'historique', label: 'Historique des RDV', emoji: '📜', activeClass: 'bg-gray-200 text-gray-700 shadow', baseClass: 'text-gray-700 hover:bg-gray-100' }
 ]
 
-// On ne garde que la logique de sélection de composant
+// --- Ajout des données centralisées ---
+const rdvs = ref([])
+const rdvsLoading = ref(true)
+const rdvsError = ref(null)
+const vehicules = ref([])
+const vehiculesLoading = ref(true)
+const vehiculesError = ref(null)
+const user_id = ref(null)
+const client_id = ref(null)
+
+onMounted(async () => {
+  try {
+    // Récupère l'utilisateur connecté
+    const res = await fetch('http://localhost:8000/api/session/user', { credentials: 'include' });
+    const data = await res.json();
+    user_id.value = data.id
+    client_id.value = data.client
+
+    // Récupère les rendez-vous
+    const rdvsRes = await fetch('http://localhost:8000/api/appointements/user/' + user_id.value, { credentials: 'include' })
+    const rdvsData = await rdvsRes.json()
+    if (!rdvsRes.ok) {
+      rdvsError.value = rdvsData.error || 'Erreur lors du chargement des rendez-vous'
+    } else {
+      rdvs.value = rdvsData
+    }
+  } catch (e) {
+    rdvsError.value = e.message
+  } finally {
+    rdvsLoading.value = false
+  }
+
+  try {
+    // Récupère les véhicules
+    const vehiculesRes = await fetch('http://localhost:8000/api/vehicules/user/' + client_id.value, { credentials: 'include' })
+    const vehiculesData = await vehiculesRes.json()
+    if (!vehiculesRes.ok) {
+      vehiculesError.value = vehiculesData.error || 'Erreur lors du chargement des véhicules'
+    } else {
+      vehicules.value = vehiculesData
+    }
+  } catch (e) {
+    vehiculesError.value = e.message
+  } finally {
+    vehiculesLoading.value = false
+  }
+})
+
+// Sélection du composant courant
 const currentComponent = computed(() => {
   if (section.value === 'rdv') return MesRendezVous
   if (section.value === 'vehicules') return MesVehicules

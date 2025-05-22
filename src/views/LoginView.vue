@@ -2,6 +2,7 @@
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
       <h2 class="text-3xl font-bold text-blue-700 mb-6 text-center">Connexion</h2>
+      <p v-if="error" class="text-red-500 text-sm text-center mt-2">{{ error }}</p>
       <form @submit.prevent="login" class="space-y-5">
         <div>
           <label class="block text-gray-700 mb-1" for="email">Email</label>
@@ -19,7 +20,6 @@
           Pas de compte ?
           <router-link to="/register" class="text-blue-600 hover:underline">Inscription</router-link>
         </p>
-        <p v-if="error" class="text-red-500 text-sm text-center mt-2">{{ error }}</p>
       </form>
     </div>
   </div>
