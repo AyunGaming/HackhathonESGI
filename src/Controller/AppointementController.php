@@ -82,30 +82,54 @@ class AppointementController extends AbstractController
             return $this->json(['error' => 'Non authentifié'], 401);
         }
         $user = $userRepository->find($userId);
-        $data = json_decode($request->getContent(), true);
-
-        // Récupération des entités liées
-        $vehicule = $vehiculeRepository->find($data['vehicule_id'] ?? null);
-        $dealership = $dealershipRepository->find($data['dealership_id'] ?? null);
-
-        if (!$vehicule || !$dealership) {
-            return $this->json(['error' => 'Véhicule ou garage introuvable'], 400);
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur introuvable'], 404);
+        }
+        $client = $user->getClient();
+        if (!$client) {
+            return $this->json(['error' => 'Client introuvable'], 404);
         }
 
-        $appointement = new Appointement();
-        $appointement->setClient($user->getClient());
-        $appointement->setVehicule($vehicule);
-        $appointement->setDealership($dealership);
+        $data = json_decode($request->getContent(), true);
 
-        // Date et heure
+        // Vérification des champs obligatoires
+        if (
+            empty($data['vehicule_id']) ||
+            empty($data['dealership_id']) ||
+            empty($data['service_ids']) ||
+            empty($data['date']) ||
+            empty($data['time'])
+        ) {
+            return $this->json(['error' => 'Champs manquants'], 400);
+        }
+
+        // Vérification véhicule
+        $vehicule = $vehiculeRepository->find($data['vehicule_id']);
+        if (!$vehicule || $vehicule->getClient()->getId() !== $client->getId()) {
+            return $this->json(['error' => 'Véhicule introuvable ou non autorisé'], 400);
+        }
+
+        // Vérification garage
+        $dealership = $dealershipRepository->find($data['dealership_id']);
+        if (!$dealership) {
+            return $this->json(['error' => 'Garage introuvable'], 400);
+        }
+
+        // Création de la date/heure
         $dateTime = \DateTime::createFromFormat('Y-m-d H:i', $data['date'] . ' ' . $data['time']);
         if (!$dateTime) {
             return $this->json(['error' => 'Date ou heure invalide'], 400);
         }
+
+        // Création du rendez-vous
+        $appointement = new Appointement();
+        $appointement->setClient($client);
+        $appointement->setVehicule($vehicule);
+        $appointement->setDealership($dealership);
         $appointement->setDate($dateTime);
 
-        // Services
-        if (!empty($data['service_ids']) && is_array($data['service_ids'])) {
+        // Ajout des services
+        if (is_array($data['service_ids'])) {
             foreach ($data['service_ids'] as $serviceId) {
                 $service = $serviceRepository->find($serviceId);
                 if ($service) {
@@ -117,7 +141,12 @@ class AppointementController extends AbstractController
         $em->persist($appointement);
         $em->flush();
 
-        return $this->json($appointement, 201);
+        // Réponse simple (tu peux adapter selon le front)
+        return $this->json([
+            'success' => true,
+            'id' => $appointement->getId(),
+            'date' => $appointement->getDate()->format('Y-m-d H:i'),
+        ], 201);
     }
 
     #[Route('/{id}', name: 'update_appointement', methods: ['PUT'])]
@@ -133,7 +162,8 @@ class AppointementController extends AbstractController
             return $this->json(['error' => 'Non authentifié'], 401);
         }
         $appointement = $appointementRepository->find($id);
-        if (!$appointement || $appointement->getUser()->getId() !== $userId) {
+        $user = $userRepository->find($userId);
+        if (!$appointement || $appointement->getClient()->getId() !== $user->getClient()->getId()) {
             return $this->json(['error' => 'Appointement introuvable ou non autorisé'], 404);
         }
         $data = json_decode($request->getContent(), true);
@@ -153,17 +183,26 @@ class AppointementController extends AbstractController
         int $id,
         EntityManagerInterface $em,
         AppointementRepository $appointementRepository,
-        UserRepository $userRepository,
-        Request $request
+        Request $request,
+        UserRepository $userRepository
     ): JsonResponse {
         $userId = $request->getSession()->get('user_id');
         if (!$userId) {
             return $this->json(['error' => 'Non authentifié'], 401);
         }
-        $appointement = $appointementRepository->find($id);
-        if (!$appointement || $appointement->getUser()->getId() !== $userId) {
-            return $this->json(['error' => 'Appointement introuvable ou non autorisé'], 404);
+        $user = $userRepository->find($userId);
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur introuvable'], 404);
         }
+        $client = $user->getClient();
+        if (!$client) {
+            return $this->json(['error' => 'Client introuvable'], 404);
+        }
+        $appointement = $appointementRepository->find($id);
+        if (!$appointement || $appointement->getClient()->getId() !== $client->getId()) {
+           return $this->json(['error' => 'Erreur lors de la suppression : '], 500);
+        }
+            
         $em->remove($appointement);
         $em->flush();
 

@@ -14,18 +14,6 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/vehicules')]
 class VehiculeController extends AbstractController
 {
-    #[Route('', name: 'vehicule_index', methods: ['GET'])]
-    public function index(VehiculeRepository $vehiculeRepository): JsonResponse
-    {
-        $vehicules = $vehiculeRepository->findAll();
-
-        $data = [];
-        foreach ($vehicules as $vehicule) {
-            $data[] = $this->serializeVehicule($vehicule);
-        }
-
-        return $this->json($data);
-    }
 
     #[Route('/user/{id}', name: 'vehicule_user', methods: ['GET'])]
     public function getAllVehicules(VehiculeRepository $vehiculeRepository, ClientRepository $clientRepository, string $id): JsonResponse
@@ -59,12 +47,26 @@ class VehiculeController extends AbstractController
     }
 
     #[Route('', name: 'vehicule_create', methods: ['POST'])]
-    public function create(Request $request, EntityManagerInterface $em, ClientRepository $clientRepository): JsonResponse
+    public function create(Request $request, EntityManagerInterface $em, ClientRepository $clientRepository, \App\Repository\UserRepository $userRepository): JsonResponse
     {
+        $userId = $request->getSession()->get('user_id');
+        if (!$userId) {
+            return $this->json(['error' => 'Non authentifié'], 401);
+        }
+        $user = $userRepository->find($userId);
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur introuvable'], 404);
+        }
+        $client = $user->getClient();
+        if (!$client) {
+            return $this->json(['error' => 'Client introuvable'], 404);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         $vehicule = new Vehicule();
-        $vehicule->setBrand($data['brand'] ?? '')
+        $vehicule->setClient($client)
+            ->setBrand($data['brand'] ?? '')
             ->setModel($data['model'] ?? '')
             ->setRegistration($data['registration'] ?? '')
             ->setVin($data['vin'] ?? '')
@@ -74,13 +76,6 @@ class VehiculeController extends AbstractController
             ->setDriverLastName($data['driver_last_name'] ?? null)
             ->setDriverFirstName($data['driver_first_name'] ?? null)
             ->setDriverPhone($data['driver_phone'] ?? null);
-
-        // Logique Métier pour récupérer le client
-        $client = $clientRepository->find($data['client_id'] ?? null);
-        if (!$client) {
-            return $this->json(['error' => 'Client not found'], 404);
-        }
-        $vehicule->setClient($client);
 
         $em->persist($vehicule);
         $em->flush();
