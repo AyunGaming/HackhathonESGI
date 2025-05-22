@@ -96,6 +96,11 @@ class Client
         return $this;
     }
 
+    public function getName(): string
+    {
+        return $this->first_name . ' ' . $this->last_name;
+    }
+
     public function getAddress(): ?string
     {
         return $this->address;
