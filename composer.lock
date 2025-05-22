@@ -1249,6 +1249,43 @@
             "extra": {
                 "branch-alias": {
                     "dev-master": "2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Nelmio\\CorsBundle\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nelmio",
+                    "homepage": "http://nelm.io"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://github.com/nelmio/NelmioCorsBundle/contributors"
+                }
+            ],
+            "description": "Adds CORS (Cross-Origin Resource Sharing) headers support in your Symfony application",
+            "keywords": [
+                "api",
+                "cors",
+                "crossdomain"
+            ],
+            "support": {
+                "issues": "https://github.com/nelmio/NelmioCorsBundle/issues",
+                "source": "https://github.com/nelmio/NelmioCorsBundle/tree/2.5.0"
+            },
+            "time": "2024-06-24T21:25:28+00:00"
+        },
+        {
             "name": "monolog/monolog",
             "version": "3.9.0",
             "source": {
@@ -1314,11 +1351,6 @@
             },
             "autoload": {
                 "psr-4": {
-                    "Nelmio\\CorsBundle\\": ""
-                },
-                "exclude-from-classmap": [
-                    "/Tests/"
-                ]
                     "Monolog\\": "src/Monolog"
                 }
             },
@@ -1328,25 +1360,6 @@
             ],
             "authors": [
                 {
-                    "name": "Nelmio",
-                    "homepage": "http://nelm.io"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://github.com/nelmio/NelmioCorsBundle/contributors"
-                }
-            ],
-            "description": "Adds CORS (Cross-Origin Resource Sharing) headers support in your Symfony application",
-            "keywords": [
-                "api",
-                "cors",
-                "crossdomain"
-            ],
-            "support": {
-                "issues": "https://github.com/nelmio/NelmioCorsBundle/issues",
-                "source": "https://github.com/nelmio/NelmioCorsBundle/tree/2.5.0"
-            },
-            "time": "2024-06-24T21:25:28+00:00"
                     "name": "Jordi Boggiano",
                     "email": "j.boggiano@seld.be",
                     "homepage": "https://seld.be"
